@@ -90,7 +90,7 @@ export default function RCTrainer() {
           const dy = by - y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 28) {
+          if (dist < 18) {
             const impactAngle = Math.atan2(dy, dx);
             const force = Math.max(1.2, Math.abs(speed) * 3.5);
 
@@ -145,26 +145,23 @@ export default function RCTrainer() {
         >
           <div className="absolute w-8 h-8 bg-black opacity-40 blur-md rounded-full translate-y-1" />
 
-          <div className="relative w-14 h-10">
-            <div className="absolute inset-0 bg-black opacity-40 blur-md rounded-xl translate-y-1" />
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 bg-black opacity-40 blur-md rounded-2xl translate-y-1" />
+            <div className="absolute inset-0 bg-gradient-to-b from-green-400 to-green-600 rounded-xl" />
 
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-300 to-gray-500 rounded-md" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-10 h-5 bg-green-700 rounded-lg" />
 
-            <div className="absolute -left-4 top-2 w-5 h-6 bg-gray-900 rounded-md shadow-md" />
-            <div className="absolute -right-4 top-2 w-5 h-6 bg-gray-900 rounded-md shadow-md" />
+            <div className="absolute left-0 top-2 w-4 h-10 bg-green-500 rounded-l-xl" />
+            <div className="absolute right-0 top-2 w-4 h-10 bg-green-500 rounded-r-xl" />
 
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-16 h-3 bg-gray-200 rounded-sm" />
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-6 bg-green-300 rounded-md" />
 
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-10">
-              <div className="w-4 h-16 bg-green-400 rounded-sm" />
-              <div className="w-4 h-16 bg-green-400 rounded-sm" />
-            </div>
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-6 h-3 bg-red-500 rounded-md" />
 
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-10 h-4 bg-green-500 rounded-sm" />
+            <div className="absolute -left-3 top-3 w-4 h-8 bg-black rounded-lg" />
+            <div className="absolute -right-3 top-3 w-4 h-8 bg-black rounded-lg" />
 
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-6 h-2 bg-red-500 rounded-sm" />
-
-            <div className="absolute inset-1 border border-white opacity-30 rounded-md" />
+            <div className="absolute inset-2 border border-white opacity-30 rounded-lg" />
           </div>
         </motion.div>
 
