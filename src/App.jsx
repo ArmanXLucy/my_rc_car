@@ -115,7 +115,7 @@ export default function RCTrainer() {
   }, [throttle, steering]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 select-none">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 select-none touch-none">
       <h1 className="text-2xl font-bold mb-4">Robot Soccer Trainer ⚽</h1>
 
       <div className="relative w-64 h-96 bg-green-800 rounded-2xl mb-6 overflow-hidden border-2 border-green-600">
@@ -175,7 +175,7 @@ export default function RCTrainer() {
           <p className="mb-2">Steering</p>
           <div
             ref={steeringRef}
-            className="relative w-32 h-32 bg-gray-800 rounded-full"
+            className="relative w-32 h-32 bg-gray-800 rounded-full touch-none"
             onPointerMove={(e) => e.pressure > 0 && updateSteering(e.clientX)}
             onPointerUp={resetControls}
             onPointerLeave={resetControls}
@@ -196,7 +196,7 @@ export default function RCTrainer() {
           <p className="mb-2">Throttle</p>
           <div
             ref={throttleRef}
-            className="relative w-16 h-32 bg-gray-800 rounded-xl"
+            className="relative w-16 h-32 bg-gray-800 rounded-xl touch-none"
             onPointerMove={(e) => e.pressure > 0 && updateThrottle(e.clientY)}
             onPointerUp={resetControls}
             onPointerLeave={resetControls}
