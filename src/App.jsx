@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 export default function RCTrainer() {
@@ -9,24 +9,29 @@ export default function RCTrainer() {
   const [ball, setBall] = useState({ x: 0, y: -40, vx: 0, vy: 0 });
   const [score, setScore] = useState(0);
 
+  const steeringRef = useRef(null);
+  const throttleRef = useRef(null);
+
   const FIELD_X = 90;
   const FIELD_Y = 160;
   const GOAL_WIDTH = 50;
 
-  const handleThrottle = (e) => {
-    const rect = e.target.getBoundingClientRect();
-    const y = e.touches ? e.touches[0].clientY : e.clientY;
-    const center = rect.height / 2;
-    const offset = center - (y - rect.top);
-    const value = Math.max(-100, Math.min(100, (offset / center) * 100));
-    setThrottle(Math.round(value));
+  /* ---------------- JOYSTICK LOGIC (NO LAG) ---------------- */
+
+  const updateThrottle = (clientY) => {
+    const rect = throttleRef.current.getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const offset = center - clientY;
+    const value = Math.max(-100, Math.min(100, (offset / (rect.height / 2)) * 100));
+    setThrottle(value);
   };
 
-  const handleSteering = (e) => {
-    const rect = e.target.getBoundingClientRect();
-    const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const value = Math.max(-50, Math.min(50, ((x - rect.left) / rect.width) * 100 - 50));
-    setSteering(Math.round(value));
+  const updateSteering = (clientX) => {
+    const rect = steeringRef.current.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    const offset = clientX - center;
+    const value = Math.max(-50, Math.min(50, (offset / (rect.width / 2)) * 50));
+    setSteering(value);
   };
 
   const resetControls = () => {
@@ -34,27 +39,26 @@ export default function RCTrainer() {
     setSteering(0);
   };
 
-  const resetGame = () => {
-    setCar({ x: 0, y: 0, angle: 0, speed: 0, angVel: 0 });
-    setBall({ x: 0, y: -40, vx: 0, vy: 0 });
-  };
+  /* ---------------- PHYSICS ---------------- */
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    let animationFrame;
+
+    const updatePhysics = () => {
       setCar(prev => {
-        const accel = throttle / 3000;
-        const turnAccel = steering / 5000;
+        const accel = throttle / 2600; // Slightly slower acceleration for better control // MUCH faster acceleration
+        const turnAccel = steering / 900; // MUCH faster steering // MUCH faster steering response
 
         let speed = prev.speed + accel;
         let angVel = prev.angVel + turnAccel;
 
-        speed *= 0.985;
-        angVel *= 0.9;
+        speed *= 0.992; // less friction = higher speed
+        angVel *= 0.85; // quicker turning // less damping = quicker left/right reaction
 
         const angle = prev.angle + angVel * 10;
 
-        let x = prev.x + Math.sin((angle * Math.PI) / 180) * speed * 120;
-        let y = prev.y - Math.cos((angle * Math.PI) / 180) * speed * 120;
+        let x = prev.x + Math.sin((angle * Math.PI) / 180) * speed * 180;
+        let y = prev.y - Math.cos((angle * Math.PI) / 180) * speed * 180;
 
         if (x > FIELD_X) { x = FIELD_X; speed *= -0.2; }
         if (x < -FIELD_X) { x = -FIELD_X; speed *= -0.2; }
@@ -64,8 +68,8 @@ export default function RCTrainer() {
         setBall(ballPrev => {
           let { x: bx, y: by, vx, vy } = ballPrev;
 
-          bx += vx;
-          by += vy;
+          bx += vx * 1.2;
+          by += vy * 1.2;
 
           vx *= 0.992;
           vy *= 0.992;
@@ -74,12 +78,11 @@ export default function RCTrainer() {
           const dy = by - y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 20) {
+          if (dist < 18) {
             const impactAngle = Math.atan2(dy, dx);
-            const force = Math.max(0.6, Math.abs(speed) * 2.5);
+            const force = Math.max(1.2, Math.abs(speed) * 3.5);
 
-            // Push ball outward to prevent graphic overlap
-            const overlap = 20 - dist;
+            const overlap = 18 - dist;
             bx += Math.cos(impactAngle) * overlap;
             by += Math.sin(impactAngle) * overlap;
 
@@ -102,93 +105,109 @@ export default function RCTrainer() {
 
         return { x, y, angle, speed, angVel };
       });
-    }, 16);
 
-    return () => clearInterval(interval);
+      animationFrame = requestAnimationFrame(updatePhysics);
+    };
+
+    animationFrame = requestAnimationFrame(updatePhysics);
+
+    return () => cancelAnimationFrame(animationFrame);
   }, [throttle, steering]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 select-none">
       <h1 className="text-2xl font-bold mb-4">Robot Soccer Trainer ⚽</h1>
 
-      <div className="relative w-64 max-w-md h-96 bg-green-800 rounded-2xl mb-6 overflow-hidden border-2 border-green-600">
+      <div className="relative w-64 h-96 bg-green-800 rounded-2xl mb-6 overflow-hidden border-2 border-green-600">
         <div className="absolute inset-0 border border-green-400" />
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-green-400" />
-        <div className="absolute left-1/2 top-1/2 w-16 h-16 border border-green-400 rounded-full -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute left-1/2 top-1/2 w-10 h-10 border border-green-400 rounded-full -translate-x-1/2 -translate-y-1/2" />
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-8 border-2 border-white rounded-sm" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-8 border-2 border-white rounded-sm" />
 
-        {/* Robot */}
         <motion.div
-          className="absolute z-20"
+          className="absolute"
           animate={{ x: car.x, y: car.y, rotate: car.angle }}
           transition={{ type: "tween", ease: "linear", duration: 0.05 }}
           style={{ left: "50%", top: "50%" }}
         >
           {/* Shadow */}
-          <div className="absolute w-10 h-14 bg-black/40 blur-md rounded-full translate-x-[-2px] translate-y-[6px]" />
+          <div className="absolute w-8 h-8 bg-black/40 blur-md rounded-full translate-y-1" />
 
-          {/* Body */}
-          <div className="relative w-8 h-14 bg-gradient-to-b from-red-400 to-red-600 rounded-md border border-red-300">
+          {/* Soccer Bot Body */}
+          <div className="relative w-10 h-10">
+            {/* Shadow */}
+            <div className="absolute inset-0 bg-black/40 blur-md rounded-xl translate-y-1" />
 
-            {/* Front Marker */}
-            <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-2 bg-white rounded-sm" />
+            {/* Main H Chassis */}
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-300 to-gray-500 rounded-md" />
 
-            {/* Wheels */}
-            <div className="absolute -left-2 top-2 w-2 h-4 bg-gray-200 rounded-sm" />
-            <div className="absolute -right-2 top-2 w-2 h-4 bg-gray-200 rounded-sm" />
-            <div className="absolute -left-2 bottom-2 w-2 h-4 bg-gray-200 rounded-sm" />
-            <div className="absolute -right-2 bottom-2 w-2 h-4 bg-gray-200 rounded-sm" />
+            {/* H Shape Cutout */}
+            <div className="absolute left-1/2 top-1/2 w-6 h-10 bg-green-800 -translate-x-1/2 -translate-y-1/2" />
 
-            {/* Bumper */}
-            <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-6 h-1 bg-gray-300 rounded-full" />
+            {/* Direction Marker */}
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 w-5 h-2 bg-red-500 rounded-sm" />
+
+            {/* Tracks / Wheels */}
+            <div className="absolute -left-2 top-1 w-3 h-5 bg-black rounded-sm" />
+            <div className="absolute -right-2 top-1 w-3 h-5 bg-black rounded-sm" />
+            <div className="absolute -left-2 bottom-1 w-3 h-5 bg-black rounded-sm" />
+            <div className="absolute -right-2 bottom-1 w-3 h-5 bg-black rounded-sm" />
+
+            {/* Mechanical Border */}
+            <div className="absolute inset-1 border border-white/30 rounded-md" />
           </div>
         </motion.div>
 
-        {/* Ball */}
         <motion.div
-          className="absolute w-5 h-5 bg-white rounded-full shadow-lg z-10"
+          className="absolute w-5 h-5 bg-white rounded-full"
           animate={{ x: ball.x, y: ball.y }}
           transition={{ type: "tween", ease: "linear", duration: 0.05 }}
           style={{ left: "50%", top: "50%" }}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-8 w-full max-w-md">
+      {/* CONTROLS */}
+      <div className="grid grid-cols-2 gap-10">
+        {/* Steering Stick */}
         <div className="flex flex-col items-center">
           <p className="mb-2">Steering</p>
           <div
-            className="w-36 h-36 bg-gray-800 rounded-2xl flex items-center justify-center touch-none"
-            onMouseMove={(e) => e.buttons === 1 && handleSteering(e)}
-            onMouseUp={resetControls}
-            onTouchMove={handleSteering}
-            onTouchEnd={resetControls}
+            ref={steeringRef}
+            className="relative w-32 h-32 bg-gray-800 rounded-full"
+            onPointerMove={(e) => e.pressure > 0 && updateSteering(e.clientX)}
+            onPointerUp={resetControls}
+            onPointerLeave={resetControls}
           >
+            <div className="absolute inset-0 border border-gray-600 rounded-full" />
+
             <motion.div
-              className="w-14 h-14 bg-blue-500 rounded-full"
+              className="absolute w-10 h-10 bg-blue-500 rounded-full"
               animate={{ x: steering }}
-              transition={{ type: "spring", stiffness: 200 }}
+              transition={{ type: "tween", duration: 0 }}
+              style={{ left: "50%", top: "50%", translateX: "-50%", translateY: "-50%" }}
             />
           </div>
         </div>
 
+        {/* Throttle Stick */}
         <div className="flex flex-col items-center">
           <p className="mb-2">Throttle</p>
           <div
-            className="w-20 h-36 bg-gray-800 rounded-2xl flex items-center justify-center touch-none relative"
-            onMouseMove={(e) => e.buttons === 1 && handleThrottle(e)}
-            onMouseUp={resetControls}
-            onTouchMove={handleThrottle}
-            onTouchEnd={resetControls}
+            ref={throttleRef}
+            className="relative w-16 h-32 bg-gray-800 rounded-xl"
+            onPointerMove={(e) => e.pressure > 0 && updateThrottle(e.clientY)}
+            onPointerUp={resetControls}
+            onPointerLeave={resetControls}
           >
-            <div className="absolute w-full h-0.5 bg-gray-600" />
+            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-600" />
 
             <motion.div
-              className="absolute w-full bg-green-500 rounded-2xl"
-              animate={{ height: `${Math.abs(throttle)}%`, y: throttle < 0 ? `${Math.abs(throttle)}%` : 0 }}
-              transition={{ type: "spring", stiffness: 200 }}
-              style={{ bottom: throttle >= 0 ? "50%" : "auto", top: throttle < 0 ? "50%" : "auto" }}
+              className="absolute w-full h-6 bg-green-500 rounded-md"
+              animate={{ y: -throttle }}
+              transition={{ type: "tween", duration: 0 }}
+              style={{ top: "50%", translateY: "-50%" }}
             />
           </div>
         </div>
@@ -196,7 +215,6 @@ export default function RCTrainer() {
 
       <div className="mt-4 bg-gray-800 px-6 py-3 rounded-xl text-center">
         <p>Score: {score}</p>
-        <button onClick={resetGame} className="mt-2 px-4 py-1 bg-red-500 rounded-lg">Reset</button>
       </div>
     </div>
   );
